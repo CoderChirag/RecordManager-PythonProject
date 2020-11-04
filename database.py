@@ -43,4 +43,18 @@ class Write_Data:
         with open('marks.json', 'w') as f:
             # Writing Json data to the marks file
             json.dump(dict, f, indent=3) 
-    
+
+class Search_Data:
+    def searchAndWrite(self, filename, rollno):
+        get_data = Get_Data()
+        if filename != -1:
+            data_dict = filename
+            if rollno in data_dict:
+                with open('f.json', 'w') as f:
+                    json.dump(data_dict[rollno], f, indent=3)
+                    
+                return 1
+            else:
+                return -1
+        else:
+            return -1

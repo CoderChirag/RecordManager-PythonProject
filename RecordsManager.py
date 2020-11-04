@@ -2,6 +2,7 @@ from tkinter import *
 from tkinter.ttk import *
 from tkinter import ttk
 import tkinter.messagebox as ms
+import os
 
 import database
 
@@ -36,6 +37,10 @@ class RecordManagement(Frame):
         tabControl.add(self.tab3, text="Marks Allocation")
         tabControl.grid()
 
+        self.searchTab = ttk.Frame(tabControl)
+        tabControl.add(self.searchTab, text="Search Database")
+        tabControl.grid()
+
         # Initializing Top LabelFrame
         self.label_frame()
         # Constructing the GUI of 3 tabs
@@ -57,11 +62,15 @@ class RecordManagement(Frame):
         self.labelFrame_tab3 = LabelFrame(self.tab3, text="Records Manager - Chitkara University", width=580, height=500)
         self.labelFrame_tab3.grid(row=0, column=0)
         self.labelFrame_tab3.grid_propagate(0)
+
+        self.labelFrame_searchTab = LabelFrame(self.searchTab, text="Records Manager - Chitkara University", width=580, height=500)
+        self.labelFrame_searchTab.grid(row=0, column=0)
+        self.labelFrame_searchTab.grid_propagate(0)
     
-    def top_label(self, labeltext, tab):
+    def top_label(self, labeltext, tab, topHeadingColumn=2, sticky="", columnspan=3):
         margin = Label(tab, width=2).grid(row=1, column=0)
         self.topLabel = Label(tab, text=labeltext,foreground='red', font="Helvetica 18 bold")
-        self.topLabel.grid(row=0, column=2, columnspan=3)
+        self.topLabel.grid(row=0, column=topHeadingColumn, columnspan=columnspan, sticky=sticky)
         enter1 = Label(tab).grid(row=1, column=1)
         enter2 = Label(tab).grid(row=2, column=1)
     
@@ -246,6 +255,48 @@ class RecordManagement(Frame):
         self.entryList_tab3 = [self.RollNoEntry_tab3, self.subjectId_entry_tab3, self.subject_name_entry_tab3, self.maxMarks_entry, self.obtMarks_entry]
 
         self.bottom_label(self.labelFrame_tab3, "Assign Marks", 9, self.entryList_tab3, True)
+# ---------------------------------------------------------- SERACH TAB ------------------------------------------------------------------
+
+        self.top_label("Search in Database", self.labelFrame_searchTab, 4)
+
+        searchLabel = Label(self.labelFrame_searchTab, text="Roll No.: ", font="comicsansms 14").grid(row=1, column=1, sticky='w')
+
+        space = Label(self.labelFrame_searchTab, width=15).grid(row=1, column=2)
+
+        self.searchBar = Entry(self.labelFrame_searchTab, width=55)
+        self.searchBar.grid(row=1, column=4, columnspan=5, sticky='e')
+        self.searchBar.insert(0, "Enter the roll no of the student to get the data")
+        self.searchBar.bind('<FocusIn>', lambda event, entry=self.searchBar, text="Enter the roll no of the student to get the data": self.on_click(event, entry, text))
+        self.searchBar.bind('<FocusOut>', lambda event, entry=self.searchBar, text="Enter the roll no of the student to get the data": self.of_click(event, entry, text))
+        self.searchBar.configure(foreground='grey')
+
+        lineBreak = Label(self.labelFrame_searchTab).grid(row=2)
+
+        self.radioVar = IntVar()
+        radio1 = Radiobutton(self.labelFrame_searchTab, text="Personal Data", variable=self.radioVar , value=0).grid(row=3, column=2, columnspan=3,sticky='w')
+        radio2 = Radiobutton(self.labelFrame_searchTab, text="Subject Data", variable=self.radioVar , value=1).grid(row=3, column=5, columnspan=2, sticky='w')
+        radio3 = Radiobutton(self.labelFrame_searchTab, text="Marks Data", variable=self.radioVar , value=2).grid(row=3, column=7, columnspan=2, sticky='e')
+
+        lineBreak = Label(self.labelFrame_searchTab).grid(row=4)
+
+        searchButton = Button(self.labelFrame_searchTab, text='Search', command=self.search).grid(row=5, column=3, sticky='e', columnspan=2)
+
+        lineBreak = Label(self.labelFrame_searchTab).grid(row=6)
+
+        self.searchResult = Text(self.labelFrame_searchTab,state='disabled', wrap='none',height=17, width=62)
+        # self.searchResult.grid(row=7, column=2, columnspan=4)
+
+
+        self.scrollb = ttk.Scrollbar(self.labelFrame_searchTab, command=self.searchResult.yview)
+        self.searchResult['yscrollcommand'] = self.scrollb.set
+
+        self.scrollbh = ttk.Scrollbar(self.labelFrame_searchTab, orient='horizontal', command=self.searchResult.xview)
+        self.searchResult['xscrollcommand'] = self.scrollbh.set
+        # scrollbh.grid(row=8, column=1, sticky='nsew')
+
+
+
+
 
 # ---------------------------------------------------------------------------------------------------------------------------------------
     # For getting the current value of option boxes present in 1st and 3rd tab
@@ -481,6 +532,47 @@ class RecordManagement(Frame):
                 return True
             else:
                 return False
+
+# ----------------------------- For Searching in the Database ------------------------------------------ 
+    def search(self):
+        search_data = database.Search_Data()
+        get_data = database.Get_Data()
+        def showError():
+            ms.showinfo('Record not found', 'Sorry, the requested record not found', icon='error')
+        
+        def showData(filename):
+            # Firstly Clearing all the previous data
+            self.searchResult.delete('1.0', END)
+            self.searchResult.grid_forget()
+            self.scrollb.grid_forget()
+            self.scrollbh.grid_forget()
+            # Now writing the data found
+            if search_data.searchAndWrite(filename, self.searchBar.get()) != -1:
+                self.searchResult.grid(row=7, column=1, columnspan=9)
+                self.scrollb.grid(row=7, column=9, sticky='nsew')
+                self.scrollbh.grid(row=8, column=1, sticky='nsew', columnspan=9)
+                self.searchResult.configure(state='normal')
+                self.searchResult.delete('1.0', END)
+                with open('f.json', 'r') as f:
+                    self.searchResult.insert(INSERT, f.read())
+                self.searchResult.configure(state='disabled')
+                os.remove('f.json')
+            else:
+                showError()
+
+        if self.radioVar.get() == 0:   # Searching the data in the Student File
+           showData(get_data.personal_data()) 
+        elif self.radioVar.get() == 1:
+            showData(get_data.subject_data())
+        elif self.radioVar.get() == 2:
+            showData(get_data.marks_data())
+
+        
+
+                
+
+
+
 
 
 
